@@ -1,7 +1,18 @@
 import java.util.*;
+import java.awt.image.*;
+import java.io.File;
+import java.io.IOException;
+import java.awt.*;
+import java.awt.event.*;
+
+import javax.imageio.ImageIO;
+import javax.swing.*;
 
 public class Test
 {
+	BufferedImage image;
+	ImageCanvas   image_canvas;
+	
 	public static void main(String[] args)
 	{
 		if (args.length != 2)
@@ -16,13 +27,13 @@ public class Test
 		String machine      = System.getProperty("os.arch");
 		//System.out.println("Current java version is " + java_version);
 		//System.out.println("Current os is " + os + " " + os_version + " on " + machine);
-		//System.out.println("Image file is " + filename);
+		
 		int  intensity  = Integer.parseInt(args[0]);
 		int  resolution = Integer.parseInt(args[1]);
 		Test test       = new Test(intensity, resolution);
 	}
 	
-	public Test(int intensity, int resolution)
+	public Test(double intensity, int resolution)
 	{
 		ArrayList v  = new ArrayList();
 		for(int i = 0; i < resolution; i++)
@@ -33,7 +44,7 @@ public class Test
 		        ArrayList xyz= new ArrayList();
 		        for(int k = 0; k < resolution; k++)
 		        {
-		        	double value = i * 100 + j * 10 + k;
+		        	double value = 0;
 		        	xyz.add(value);
 		        }
 		        xy.add(xyz);
@@ -41,10 +52,115 @@ public class Test
 		    v.add(xy);
 		}
 		
+		setVoxel(v, resolution / 2 - 1, resolution / 2 - 1, resolution / 2, -intensity);
+		setVoxel(v, resolution / 2 + 1, resolution / 2 + 1, resolution / 2,  intensity);
+		
 		ArrayList w = getAverage(v, resolution, resolution, resolution);
 		
-		double voxel = getVoxel(w, 0,  0,  0);
-		System.out.println("Voxel is " + voxel);
+		double negative = getVoxel(w, resolution / 2 - 1,  resolution / 2 - 1,  resolution / 2);
+		System.out.println("Negative pole is " + String.format("%.2f", negative));
+		double positive = getVoxel(w, resolution / 2 + 1,  resolution / 2 + 1,  resolution / 2);
+		System.out.println("Positive pole is " + String.format("%.2f", positive));
+		
+		
+		int size = w.size();
+		double max_delta = (double)w.get(size - 1);
+		//System.out.println("Max delta is " + String.format("%.2f", max_delta));
+		
+		ArrayList previous_volume = w;
+		ArrayList current_volume;
+		
+		int iterations = 0;
+		while(max_delta > 0.01)
+		{
+			current_volume  = getAverage(previous_volume, resolution, resolution, resolution);
+			previous_volume = current_volume;
+			iterations ++;
+			max_delta = (double)previous_volume.get(size - 1);
+			System.out.println("Max delta is " + max_delta);
+		}
+		max_delta = (double)previous_volume.get(size - 1);
+		System.out.println("Max delta after " + iterations + " iterations is " + max_delta);
+		
+		double plane[][] = getPlane(previous_volume, 2, resolution - 1, resolution, resolution);
+		
+		double max = 0; 
+		double min = 0;
+		for(int i = 0; i < resolution; i++)
+		{
+			for(int j = 0; j < resolution; j++)
+			{
+			    if(plane[i][j] < min)
+			    	min = plane[i][j];
+			    if(plane[i][j] > max)
+				    max = plane[i][j];		
+			}
+		}
+		double range = max - min;
+		for(int i = 0; i < resolution; i++)
+		{
+			for(int j = 0; j < resolution; j++)
+			{
+			    plane[i][j] -= min;
+			    plane[i][j] /= range;
+			    plane[i][j] *= 255;
+			}
+		}
+		
+		image = new BufferedImage(resolution, resolution, BufferedImage.TYPE_INT_RGB);	
+		
+		int [] blue =  new int[resolution * resolution];
+		int [] green = new int[resolution * resolution];
+		int [] red =   new int[resolution * resolution];
+		
+		for(int i = 0; i < resolution; i++)
+		{
+			for(int j = 0; j < resolution; j++)
+			{
+				int k = i * resolution + j;
+				
+				int pixel = 0;
+				
+				blue[k]  = (int)plane[i][j];
+				green[k] = (int)plane[i][j];
+				red[k]   = (int)plane[i][j];
+				
+				pixel |= blue[k] << 16;
+				pixel |= green[k] << 8;
+				pixel |= red[k];
+			    	
+			    image.setRGB(j, i, pixel);
+			}
+		}
+		
+		String file_string = new String("C:/Users/Brian Crowley/Desktop/foo.jpg");
+        try 
+        {  
+            ImageIO.write(image, "jpg", new File(file_string)); 
+        } 
+        catch(IOException e) 
+        {  
+            e.printStackTrace(); 
+        }      
+		
+		
+		
+		JFrame frame = new JFrame("Relaxer");
+		WindowAdapter window_handler = new WindowAdapter()
+		{
+			public void windowClosing(WindowEvent event)
+			{
+			    System.exit(0);
+			}
+		};
+		frame.addWindowListener(window_handler);
+			    
+		ImageCanvas image_canvas = new ImageCanvas();
+		image_canvas.setSize(resolution, resolution);
+		frame.getContentPane().add(image_canvas, BorderLayout.CENTER);		
+		frame.pack();
+		frame.setLocation(400, 200);
+		frame.setVisible(true);
 	}
 	
 	public double getVoxel(ArrayList v, int x, int y, int z)
@@ -54,6 +170,64 @@ public class Test
 		double    voxel = (double)    xyz.get(z);
 		
 		return voxel;
+	}
+	
+	public double[][]  getPlane(ArrayList v, int axis, int location, int xdim, int ydim)
+	{
+		double [][] plane = new double[ydim][xdim];
+		
+		
+		if(axis == 0)
+		{
+		    int x = location;
+		    
+		    for(int i = 0; i < ydim; i++)
+			{
+				for(int j = 0; j < xdim; j++)
+				{
+				    int y = j;
+				    int z = i;
+					double voxel = getVoxel(v, x, y, z);	
+					plane[i][j] = voxel;
+				}
+			}
+		}
+		else if(axis == 1)
+		{
+		    int y = location;	
+		    
+		    for(int i = 0; i < ydim; i++)
+			{
+				for(int j = 0; j < xdim; j++)
+				{
+				    int x = j;
+				    int z = i;
+				    double voxel = getVoxel(v, x, y, z);
+				    plane[i][j] = voxel;
+				}
+			}
+		}
+		else if(axis == 2)
+		{
+		    int z = location;	
+		    for(int i = 0; i < ydim; i++)
+			{
+				for(int j = 0; j < xdim; j++)
+				{
+					int x = j;
+				    int y = i;	
+				    double voxel = getVoxel(v, x, y, z);
+				    plane[i][j] = voxel;
+				}
+			}
+		}
+		else
+		{
+			System.out.println("Value for axis must be 1, 2, or 3.");
+			return plane;
+		}
+		
+		return plane;
 	}
 	
 	public void setVoxel(ArrayList v, int x, int y, int z, double value)
@@ -103,7 +277,8 @@ public class Test
 	
 	public ArrayList getAverage(ArrayList v, int xdim, int ydim, int zdim)
 	{
-		ArrayList w = new ArrayList();
+		ArrayList w      = new ArrayList();
+		double max_delta = 0;
 		
 		for(int i = 0; i < xdim; i++)
 		{
@@ -140,15 +315,24 @@ public class Test
 				    }
 				    
 				    double average = total / (neighbors.size() + 1);
+				    double delta   = voxel - average;
+				    
+				    if(Math.abs(delta) > max_delta)
+				    	max_delta = Math.abs(delta);
 				    
 				    setVoxel(w, x, y, z, average);
 				}	
 			}
 		}
-		
+		w.add(max_delta);
 		return w;
 	}
 	
-	
-	
+	class ImageCanvas extends Canvas
+    {
+        public synchronized void paint(Graphics g)
+        {
+            g.drawImage(image, 0, 0, this);
+        }
+    }   
 }
