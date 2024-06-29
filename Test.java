@@ -15,9 +15,9 @@ public class Test
 	
 	public static void main(String[] args)
 	{
-		if (args.length != 2)
+		if (args.length != 3)
 		{
-			System.out.println("Usage: java Test <intensity> <resolution>");
+			System.out.println("Usage: java Test <intensity> <difference> <resolution>");
 			System.exit(0);
 		}
 	   
@@ -29,11 +29,12 @@ public class Test
 		//System.out.println("Current os is " + os + " " + os_version + " on " + machine);
 		
 		int  intensity  = Integer.parseInt(args[0]);
-		int  resolution = Integer.parseInt(args[1]);
-		Test test       = new Test(intensity, resolution);
+		int  difference = Integer.parseInt(args[1]);
+		int  resolution = Integer.parseInt(args[2]);
+		Test test       = new Test(intensity, difference, resolution);
 	}
 	
-	public Test(double intensity, int resolution)
+	public Test(double intensity, int difference, int resolution)
 	{
 		ArrayList v  = new ArrayList();
 		for(int i = 0; i < resolution; i++)
@@ -52,15 +53,16 @@ public class Test
 		    v.add(xy);
 		}
 		
-		setVoxel(v, resolution / 2 - 1, resolution / 2 - 1, resolution / 2, -intensity);
-		setVoxel(v, resolution / 2 + 1, resolution / 2 + 1, resolution / 2,  intensity);
+		setVoxel(v, resolution / 2 - difference, resolution / 2 - difference, resolution / 2, -intensity);
+		setVoxel(v, resolution / 2 + difference, resolution / 2 + difference, resolution / 2,  intensity);
 		
 		ArrayList w = getAverage(v, resolution, resolution, resolution);
 		
-		double negative = getVoxel(w, resolution / 2 - 1,  resolution / 2 - 1,  resolution / 2);
+		double negative = getVoxel(w, resolution / 2 - difference,  resolution / 2 - difference,  resolution / 2);
 		System.out.println("Negative pole is " + String.format("%.2f", negative));
-		double positive = getVoxel(w, resolution / 2 + 1,  resolution / 2 + 1,  resolution / 2);
+		double positive = getVoxel(w, resolution / 2 + difference,  resolution / 2 + difference,  resolution / 2);
 		System.out.println("Positive pole is " + String.format("%.2f", positive));
+		System.out.println();
 		
 		
 		int size = w.size();
@@ -71,16 +73,19 @@ public class Test
 		ArrayList current_volume;
 		
 		int iterations = 0;
-		while(max_delta > 0.01)
+		double threshold = 1.;
+		threshold /= resolution * 100;
+		while(max_delta > threshold)
 		{
 			current_volume  = getAverage(previous_volume, resolution, resolution, resolution);
 			previous_volume = current_volume;
 			iterations ++;
 			max_delta = (double)previous_volume.get(size - 1);
-			System.out.println("Max delta is " + max_delta);
+			//System.out.println("Max delta is " + max_delta);
 		}
 		max_delta = (double)previous_volume.get(size - 1);
 		System.out.println("Max delta after " + iterations + " iterations is " + max_delta);
+		System.out.println();
 		
 		double plane[][] = getPlane(previous_volume, 2, resolution - 1, resolution, resolution);
 		
@@ -96,6 +101,11 @@ public class Test
 				    max = plane[i][j];		
 			}
 		}
+		
+		System.out.println("Min is " + min + ", max is " + max);
+		//System.out.println("Min is " + String.format("%.2f", min) + ", max is " + String.format("%.2f", max));
+		System.out.println();
+		
 		double range = max - min;
 		for(int i = 0; i < resolution; i++)
 		{
@@ -104,6 +114,9 @@ public class Test
 			    plane[i][j] -= min;
 			    plane[i][j] /= range;
 			    plane[i][j] *= 255;
+			    
+			    if(plane[i][j] < 1)
+			    	System.out.println(i + " " + j + " is zero.");
 			}
 		}
 		
@@ -142,8 +155,6 @@ public class Test
         {  
             e.printStackTrace(); 
         }      
-		
-		
 		
 		JFrame frame = new JFrame("Relaxer");
 		WindowAdapter window_handler = new WindowAdapter()
@@ -223,7 +234,7 @@ public class Test
 		}
 		else
 		{
-			System.out.println("Value for axis must be 1, 2, or 3.");
+			System.out.println("Value for axis must be 0, 1, or 2.");
 			return plane;
 		}
 		
