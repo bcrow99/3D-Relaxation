@@ -1,4 +1,5 @@
 import java.util.*;
+import java.util.Collections.*;
 import java.awt.image.*;
 import java.io.File;
 import java.io.IOException;
@@ -59,10 +60,10 @@ public class Test
 		ArrayList w = getAverage(v, resolution, resolution, resolution);
 		
 		double negative = getVoxel(w, resolution / 2 - difference,  resolution / 2 - difference,  resolution / 2);
-		System.out.println("Negative pole is " + String.format("%.2f", negative));
+		//System.out.println("Negative pole is " + String.format("%.2f", negative));
 		double positive = getVoxel(w, resolution / 2 + difference,  resolution / 2 + difference,  resolution / 2);
-		System.out.println("Positive pole is " + String.format("%.2f", positive));
-		System.out.println();
+		//System.out.println("Positive pole is " + String.format("%.2f", positive));
+		//System.out.println();
 		
 		
 		int size = w.size();
@@ -72,6 +73,7 @@ public class Test
 		ArrayList previous_volume = w;
 		ArrayList current_volume;
 		
+		/*
 		int iterations = 0;
 		double threshold = 1.;
 		threshold /= resolution * 100;
@@ -83,9 +85,22 @@ public class Test
 			max_delta = (double)previous_volume.get(size - 1);
 			//System.out.println("Max delta is " + max_delta);
 		}
+		
+		*/
+		
+		int iterations = 0;
+		while(iterations < resolution / 2)
+		{
+			current_volume  = getAverage(previous_volume, resolution, resolution, resolution);
+			previous_volume = current_volume;
+			iterations ++;
+			max_delta = (double)previous_volume.get(size - 1);
+			//System.out.println("Max delta is " + max_delta);	
+		}
+		
 		max_delta = (double)previous_volume.get(size - 1);
-		System.out.println("Max delta after " + iterations + " iterations is " + max_delta);
-		System.out.println();
+		//System.out.println("Max delta after " + iterations + " iterations is " + max_delta);
+		//System.out.println();
 		
 		double plane[][] = getPlane(previous_volume, 2, resolution - 1, resolution, resolution);
 		
@@ -114,9 +129,6 @@ public class Test
 			    plane[i][j] -= min;
 			    plane[i][j] /= range;
 			    plane[i][j] *= 255;
-			    
-			    if(plane[i][j] < 1)
-			    	System.out.println(i + " " + j + " is zero.");
 			}
 		}
 		
@@ -146,7 +158,63 @@ public class Test
 			}
 		}
 		
-		String file_string = new String("C:/Users/Brian Crowley/Desktop/foo.jpg");
+		String file_string = new String("C:/Users/Brian Crowley/Desktop/top.jpg");
+        try 
+        {  
+            ImageIO.write(image, "jpg", new File(file_string)); 
+        } 
+        catch(IOException e) 
+        {  
+            e.printStackTrace(); 
+        } 
+        
+        /**************************************************************************************/
+		
+        plane = getPlane(previous_volume, 2, resolution / 2, resolution, resolution);
+		max = 0; 
+		min = 0;
+		for(int i = 0; i < resolution; i++)
+		{
+			for(int j = 0; j < resolution; j++)
+			{
+			    if(plane[i][j] < min)
+			    	min = plane[i][j];
+			    if(plane[i][j] > max)
+				    max = plane[i][j];		
+			}
+		}
+		range = max - min;
+		for(int i = 0; i < resolution; i++)
+		{
+			for(int j = 0; j < resolution; j++)
+			{
+			    plane[i][j] -= min;
+			    plane[i][j] /= range;
+			    plane[i][j] *= 255;
+			}
+		}
+		
+		for(int i = 0; i < resolution; i++)
+		{
+			for(int j = 0; j < resolution; j++)
+			{
+				int k = i * resolution + j;
+				
+				int pixel = 0;
+				
+				blue[k]  = (int)plane[i][j];
+				green[k] = (int)plane[i][j];
+				red[k]   = (int)plane[i][j];
+				
+				pixel |= blue[k] << 16;
+				pixel |= green[k] << 8;
+				pixel |= red[k];
+			    	
+			    image.setRGB(j, i, pixel);
+			}
+		}
+		
+		file_string = new String("C:/Users/Brian Crowley/Desktop/mid.jpg");
         try 
         {  
             ImageIO.write(image, "jpg", new File(file_string)); 
@@ -156,6 +224,162 @@ public class Test
             e.printStackTrace(); 
         }      
 		
+        for(int i = 0; i < resolution; i++)
+		{
+			for(int j = 0; j < resolution; j++)
+			{
+				int k = i * resolution + j;
+				
+				int pixel = 0;
+				
+				blue[k]  = (int)plane[i][j];
+				green[k] = (int)plane[i][j];
+				red[k]   = (int)plane[i][j];
+				
+				pixel |= blue[k] << 16;
+				pixel |= green[k] << 8;
+				pixel |= red[k];
+			    	
+			    image.setRGB(j, i, pixel);
+			}
+		}
+		
+		file_string = new String("C:/Users/Brian Crowley/Desktop/mid.jpg");
+        try 
+        {  
+            ImageIO.write(image, "jpg", new File(file_string)); 
+        } 
+        catch(IOException e) 
+        {  
+            e.printStackTrace(); 
+        }      
+		
+        ArrayList value_list = new ArrayList();
+        for(int i = 0; i < resolution; i++)
+		{
+			for(int j = 0; j < resolution; j++)
+			{
+				int k = i * resolution + j;
+				
+				int pixel = 0;
+				
+				blue[k]  = (int)plane[i][j];
+				
+				if(blue[k] > 100 && blue[k] < 155)
+				{
+					blue[k] = 255;
+					value_list.add(plane[i][j]);
+				}
+				else
+					blue[k] = 0;
+				green[k] = blue[k];
+				red[k]   = blue[k];
+				
+				pixel |= blue[k] << 16;
+				pixel |= green[k] << 8;
+				pixel |= red[k];
+			    	
+			    image.setRGB(j, i, pixel);
+			}
+		}
+        
+        size = value_list.size();
+        Collections.sort(value_list);
+        double first = (double)value_list.get(0);
+        double last  = (double)value_list.get(size - 1);
+        
+        System.out.println("Number of values is " + size);
+        System.out.println("First value is " + first);
+        System.out.println("Last value is " + last);
+        System.out.println();
+        
+        int increment = size / 255;
+        int partition = 0;
+        
+        for(int i = 0; i < size; i += increment)
+        {
+        	double value = (double)value_list.get(i);
+        	System.out.println("Partition " + partition + " is " + value);
+        	partition++;
+        }
+        
+		
+		file_string = new String("C:/Users/Brian Crowley/Desktop/mask.jpg");
+        try 
+        {  
+            ImageIO.write(image, "jpg", new File(file_string)); 
+        } 
+        catch(IOException e) 
+        {  
+            e.printStackTrace(); 
+        }      
+		
+        
+        /**************************************************************************************/
+        
+        plane = getPlane(previous_volume, 2, 0, resolution, resolution);
+		max = 0; 
+		min = 0;
+		for(int i = 0; i < resolution; i++)
+		{
+			for(int j = 0; j < resolution; j++)
+			{
+			    if(plane[i][j] < min)
+			    	min = plane[i][j];
+			    if(plane[i][j] > max)
+				    max = plane[i][j];		
+			}
+		}
+		range = max - min;
+		for(int i = 0; i < resolution; i++)
+		{
+			for(int j = 0; j < resolution; j++)
+			{
+			    plane[i][j] -= min;
+			    plane[i][j] /= range;
+			    plane[i][j] *= 255;
+			}
+		}
+		
+		for(int i = 0; i < resolution; i++)
+		{
+			for(int j = 0; j < resolution; j++)
+			{
+				int k = i * resolution + j;
+				
+				int pixel = 0;
+				
+				blue[k]  = (int)plane[i][j];
+				green[k] = (int)plane[i][j];
+				red[k]   = (int)plane[i][j];
+				
+				pixel |= blue[k] << 16;
+				pixel |= green[k] << 8;
+				pixel |= red[k];
+			    	
+			    image.setRGB(j, i, pixel);
+			}
+		}
+		
+		file_string = new String("C:/Users/Brian Crowley/Desktop/bottom.jpg");
+        try 
+        {  
+            ImageIO.write(image, "jpg", new File(file_string)); 
+        } 
+        catch(IOException e) 
+        {  
+            e.printStackTrace(); 
+        }      
+		
+        
+        
+        
+        
+        
+        
+        
+        
+        /**************************************************************************************/
 		JFrame frame = new JFrame("Relaxer");
 		WindowAdapter window_handler = new WindowAdapter()
 		{
